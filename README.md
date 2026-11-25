@@ -10,8 +10,6 @@
 /plugin install invoice-inbox@invoice-inbox-marketplace
 ```
 
-私人 repo 需先被邀請為協作者，且電腦上 `gh auth login` 過。
-
 之後對 Claude 說「**幫我設定發票收件匣**」，它會一步步帶你完成（Node、Google 憑證、授權、啟動）。
 
 ## 沒有 Claude 的手動步驟

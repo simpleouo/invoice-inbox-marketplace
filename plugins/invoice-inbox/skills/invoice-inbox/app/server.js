@@ -173,17 +173,26 @@ async function pool(items, n, fn) {
 }
 // ---------- 自動歸類：把還沒貼「發票」標籤的新發票信找出來並貼上 ----------
 const AUTO_LABEL = process.env.AUTO_LABEL !== "0";
-const DISCOVER_DAYS = 30, DISCOVER_EVERY_MS = 60000;
+const DISCOVER_DAYS = +process.env.DISCOVER_DAYS || 30, DISCOVER_EVERY_MS = 60000;
 const SENDER_OK = /(ecloudlife\.com|email\.apple\.com|mycard520\.com\.tw|ei\.com\.tw|uberegui\.com|steampowered\.com|eslite\.com|tradevan\.com\.tw|ecpay\.com\.tw|ezpay\.com\.tw|uxb2b\.com|foodpanda\.tweinv\.com|gateweb\.com\.tw|cyberbiz\.co)$/i;
 const SUBJ_OK = /電子發票|發票開立|開立發票|發票通知|e-?invoice/i;
 const SUBJ_NO = /中獎|歸戶|領獎|載具|密碼|條碼|Carrier|Award|one-time/i;
 let checked = readJson("checked.json", {}), lastDiscover = 0, autoLog = readJson("autolabel.json", []);
+let discoverState = readJson("discover-state.json", {}); // { full: true } 代表第一次全信箱掃描已完成
 async function discover(overrides) {
   if (!AUTO_LABEL || Date.now() - lastDiscover < DISCOVER_EVERY_MS) return;
   lastDiscover = Date.now();
-  const q = `-label:"${LABEL_NAME}" newer_than:${DISCOVER_DAYS}d -in:sent -in:trash -in:spam (subject:發票 OR "發票號碼" OR "電子發票")`;
-  const j = await gmail("/messages?maxResults=100&q=" + encodeURIComponent(q));
-  const todo = (j.messages || []).map(x => x.id).filter(id => !checked[id] && !cache[id]);
+  // 第一次執行：掃整個信箱（不限天數、跑完所有分頁）；完成後改為只掃最近 DISCOVER_DAYS 天
+  const full = !discoverState.full;
+  const q = `-label:"${LABEL_NAME}" ${full ? "" : "newer_than:" + DISCOVER_DAYS + "d "}-in:sent -in:trash -in:spam (subject:發票 OR "發票號碼" OR "電子發票")`;
+  const found = []; let pageToken = "";
+  do {
+    const j = await gmail("/messages?maxResults=100&q=" + encodeURIComponent(q) + (pageToken ? "&pageToken=" + pageToken : ""));
+    (j.messages || []).forEach(x => found.push(x.id));
+    pageToken = full ? j.nextPageToken : "";
+  } while (pageToken);
+  const todo = found.filter(id => !checked[id] && !cache[id]);
+  if (full && !todo.length) { discoverState.full = true; writeJson("discover-state.json", discoverState); console.log("[自動歸類] 第一次全信箱掃描完成，之後只掃最近 " + DISCOVER_DAYS + " 天"); return; }
   for (const id of todo.slice(0, 20)) {
     const m = await gmail("/messages/" + id + "?format=full");
     const rec = parseMessage(m, overrides);
