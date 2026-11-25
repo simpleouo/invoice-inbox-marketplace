@@ -6,7 +6,7 @@
 ## 安裝（Claude Code）
 
 ```bash
-/plugin marketplace add <擁有者>/<repo名稱>
+/plugin marketplace add simpleouo/invoice-inbox-marketplace
 /plugin install invoice-inbox@invoice-inbox-marketplace
 ```
 
