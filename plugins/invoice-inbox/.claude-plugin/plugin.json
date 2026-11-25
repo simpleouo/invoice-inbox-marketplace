@@ -1,0 +1,5 @@
+{
+  "name": "invoice-inbox",
+  "version": "1.0.0",
+  "description": "本機發票收件匣：讀取 Gmail 發票信、雙月分期、未讀通知、一鍵已讀、自動兌獎"
+}

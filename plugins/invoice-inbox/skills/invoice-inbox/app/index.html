@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>發票收件匣</title>
+<style>
+  :root{
+    --bg:#f6f5f1; --card:#ffffff; --ink:#1f2328; --muted:#6a7078; --line:#e4e1d8;
+    --accent:#1f6f5c; --accent-soft:#e3f1ec; --warn:#a15c00; --warn-soft:#fbf0dc;
+    --infer:#3a5a9c; --infer-soft:#e6ecf8; --prize:#b8860b; --prize-soft:#fff6d6; --new:#c2410c; --new-soft:#fdeee3; --err:#b42318; --err-soft:#fde8e6;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#16181b; --card:#1e2125; --ink:#e8eaed; --muted:#9aa1a9; --line:#31353b;
+      --accent:#5fc1a6; --accent-soft:#1d332d; --warn:#e5b05a; --warn-soft:#3a2f1a;
+      --infer:#8fb0ee; --infer-soft:#232e47; --prize:#e0a82e; --prize-soft:#3b3213; --new:#fb923c; --new-soft:#3a2517; --err:#f97066; --err-soft:#3a1d1a;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,"PingFang TC","Microsoft JhengHei","Noto Sans TC",system-ui,sans-serif}
+  .wrap{max-width:1000px;margin:0 auto;padding:28px 16px 64px}
+  h1{font-size:22px;margin:0 0 4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .badge{background:var(--new);color:#fff;border-radius:999px;font-size:13px;padding:1px 10px;font-weight:600}
+  .badge[hidden]{display:none}
+  .sub{color:var(--muted);margin:0 0 16px;font-size:13px}
+  .status{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+  .dot.err{background:var(--err)} .dot.sync{animation:p 1s infinite alternate}
+  @keyframes p{to{opacity:.3}}
+  .banner{border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .banner.new{background:var(--new-soft);color:var(--new)} .banner.err{background:var(--err-soft);color:var(--err)}
+  .banner.info{background:var(--infer-soft);color:var(--infer)}
+  .banner[hidden]{display:none}
+  .banner button{margin-left:auto}
+  button,.btn{font:inherit;font-size:14px;padding:7px 13px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .tab{border-radius:999px;padding:8px 14px}
+  .tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .tab .n{background:var(--new);color:#fff;border-radius:999px;padding:0 7px;font-size:12px;margin-left:6px}
+  .period{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+  .period h2{margin:0 0 6px;font-size:17px}
+  .meta{display:flex;flex-wrap:wrap;gap:6px 18px;color:var(--muted);font-size:13px}
+  .meta b{color:var(--ink);font-weight:600}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;background:var(--accent-soft);color:var(--accent)}
+  .pill.wait{background:var(--warn-soft);color:var(--warn)}
+  .tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 10px}
+  input[type=search]{flex:1;min-width:180px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit}
+  label.chk{font-size:14px;color:var(--muted);display:flex;gap:6px;align-items:center;cursor:pointer}
+  .tablebox{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow-x:auto}
+  table{border-collapse:collapse;width:100%;min-width:760px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
+  tr:last-child td{border-bottom:none}
+  tbody tr{cursor:pointer}
+  tbody tr:hover{background:var(--accent-soft)}
+  tr.unread td{font-weight:600}
+  tr.unread td:first-child{box-shadow:inset 3px 0 0 var(--new)}
+  tr.fresh{background:var(--new-soft)}
+  td.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  th.num{text-align:right}
+  td.inv{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:nowrap}
+  td.mon{white-space:nowrap} td.mon small{display:block;color:var(--muted);font-size:12px;font-weight:400}
+  td.act{white-space:nowrap;font-weight:400}
+  td.act a{color:var(--infer);font-size:13px;text-decoration:none}
+  .na{color:var(--warn);background:var(--warn-soft);padding:1px 7px;border-radius:6px;font-size:12px;font-weight:400}
+  .inf{color:var(--infer);background:var(--infer-soft);padding:1px 6px;border-radius:6px;font-size:11px;margin-left:6px;font-weight:400}
+  .note{display:block;color:var(--muted);font-size:12px;font-weight:400}
+  tfoot td{font-weight:600;border-top:1px solid var(--line);border-bottom:none}
+  .legend{color:var(--muted);font-size:12.5px;margin-top:18px;line-height:1.8}
+  .setup{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 22px}
+  .setup ol{padding-left:20px} .setup code{background:var(--infer-soft);padding:1px 6px;border-radius:5px;font-size:13px}
+  .more{margin-top:10px}
+  tr.win td{background:var(--prize-soft)}
+  .prize{display:inline-block;background:var(--prize);color:#fff;border-radius:6px;padding:1px 8px;font-size:12px;font-weight:600;margin-left:6px;font-family:inherit}
+  .pbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 18px;margin-bottom:14px;font-size:14px}
+  .pbox.hit{border-color:var(--prize);background:var(--prize-soft)}
+  .pbox .nums{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.3px}
+  .pbox h3{margin:0 0 4px;font-size:15px} .pbox .m{color:var(--muted);font-size:12.5px;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>發票收件匣 <span class="badge" id="badge" hidden></span></h1>
+  <p class="sub"><span class="status"><span class="dot" id="dot"></span><span id="stat">連線中…</span></span>
+    　·　來源：Gmail「<span id="label">發票</span>」標籤　·　點一列＝標為已讀（同步到 Gmail）</p>
+
+  <div class="banner new" id="newBanner" hidden><span id="newText"></span><button id="dismissNew">知道了</button></div>
+  <div class="banner err" id="errBanner" hidden></div>
+  <div class="banner info" id="notiBanner" hidden>開啟桌面通知，頁面開著時新發票一到就會提醒你。<button id="enableNoti" class="primary">開啟通知</button></div>
+
+  <div id="app"></div>
+</div>
+
+<script>
+const POLL_MS = 30000;
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = n => n == null ? null : "NT$ " + n.toLocaleString("en-US");
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+const SRC = { match:"比對", user:"你補充", rule:"依寄件者推測" };
+
+let rows = [], current = null, q = "", onlyUnread = false, showOld = false, firstLoad = true;
+let seen = new Set(store.get("seenIds", []));
+let freshIds = new Set();
+let lastErr = null, timer = null;
+let prizeMap = {}, prizeErr = null;
+const TIERS = [[8,"頭獎",200000],[7,"二獎",40000],[6,"三獎",10000],[5,"四獎",4000],[4,"五獎",1000],[3,"六獎",200]];
+function prizeOf(r, z){
+  if(!z || !r.no || !/^[A-Z]{2}\d{8}$/.test(r.no)) return null;
+  const n = r.no.slice(2);
+  if (z.special.includes(n)) return { name:"特別獎", amt:10000000 };
+  if (z.grand.includes(n)) return { name:"特獎", amt:2000000 };
+  let best = null;
+  for (const f of z.firsts) for (const [k, name, amt] of TIERS) if (n.slice(-k) === f.slice(-k)) { if (!best || amt > best.amt) best = { name, amt }; break; }
+  return best;
+}
+
+// ---------- 期別 ----------
+function periodOf(r){
+  const [y, m] = r.d.split("/").map(Number);
+  const idx = Math.ceil(m / 2);
+  return { id: y + "-" + idx, y, endM: idx * 2, startM: idx * 2 - 1 };
+}
+function periodMeta(p, now){
+  const pad = n => String(n).padStart(2, "0");
+  const dt = (y, m, d) => new Date(y, m - 1, d);       // m 可超過 12，JS 會自動進位
+  const f = dt => `${dt.getFullYear()}/${pad(dt.getMonth()+1)}/${pad(dt.getDate())}`;
+  const lastDay = new Date(p.y, p.endM, 0);
+  const draw = dt(p.y, p.endM + 1, 25), claimS = dt(p.y, p.endM + 2, 6), claimE = dt(p.y, p.endM + 5, 5);
+  claimE.setHours(23,59,59);
+  let status, wait = false, expired = false;
+  if (now <= new Date(lastDay.getTime() + 864e5 - 1)) { status = "本期進行中"; wait = true; }
+  else if (now < draw) { status = "尚未開獎"; wait = true; }
+  else if (now <= claimE) status = "已開獎，領獎中";
+  else { status = "已逾領獎期限"; expired = true; }
+  const days = Math.ceil((draw - now) / 864e5);
+  return {
+    name: `${p.startM}–${p.endM}月期`, range: `${p.y}/${pad(p.startM)}/01 – ${pad(p.endM)}/${pad(lastDay.getDate())}`,
+    draw: f(draw) + (status === "尚未開獎" && days > 0 ? `（${days} 天後開獎）` : draw <= now ? "（已開獎）" : ""),
+    claim: `${f(claimS)} – ${f(claimE)}`, status, wait, expired, key: p.y * 100 + p.endM
+  };
+}
+
+function buildPeriods(){
+  const now = new Date(), map = new Map();
+  for (const r of rows){
+    const p = periodOf(r);
+    if (!map.has(p.id)) map.set(p.id, { ...p, ...periodMeta(p, now), rows: [] });
+    map.get(p.id).rows.push(r);
+  }
+  const all = [...map.values()].sort((a, b) => a.key - b.key);
+  all.forEach(p => { p.z = prizeMap[p.id] || null; p.rows.forEach(r => { r.prize = prizeOf(r, p.z); }); });
+  all.forEach(p => p.rows.sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : 0));
+  return all;
+}
+
+// ---------- 渲染 ----------
+function rowHtml(r){
+  const month = parseInt(r.d.slice(5, 7), 10) + "月";
+  const amt = r.amt == null ? `<span class="na">通知信未載明</span>` : fmt(r.amt);
+  const item = r.item == null ? `<span class="na">通知信未載明</span>`
+    : esc(r.item) + (SRC[r.itemSrc] ? `<span class="inf">${SRC[r.itemSrc]}</span>` : "");
+  const link = `https://mail.google.com/mail/u/0/#all/${r.threadId || r.id}`;
+  return `<tr data-id="${r.id}" class="${r.unread ? "unread" : ""} ${freshIds.has(r.id) ? "fresh" : ""} ${r.prize ? "win" : ""}">
+    <td class="mon">${r.unread ? "● " : ""}${month}<small>${r.d}</small></td>
+    <td class="inv">${esc(r.no || "（解析不到）")}${r.auto ? `<span class="inf">自動歸類</span>` : ""}${r.prize ? `<span class="prize">🎉 ${r.prize.name} ${fmt(r.prize.amt)}</span>` : ""}</td>
+    <td class="num">${amt}</td>
+    <td>${item}${r.note ? `<span class="note">${esc(r.note)}</span>` : ""}</td>
+    <td>${esc(r.store)}</td>
+    <td class="act"><a href="${link}" target="_blank" rel="noopener">開啟信件</a></td></tr>`;
+}
+
+function prizeBox(p){
+  const z = p.z;
+  if (!z) return `<div class="pbox">🎟 <b>對獎</b>：${p.wait && p.status !== "已開獎，領獎中" ? "尚未開獎，開獎後自動對獎（" + p.draw.replace(/（.*$/, "") + "）" : prizeErr ? "暫時抓不到財政部中獎號碼（" + esc(prizeErr) + "）" : "查無這一期的中獎號碼"}</div>`;
+  const wins = p.rows.filter(r => r.prize), total = wins.reduce((a, r) => a + r.prize.amt, 0);
+  const list = a => a.map(x => `<span class="nums">${x}</span>`).join("、");
+  return `<div class="pbox ${wins.length ? "hit" : ""}">
+    <h3>${wins.length ? `${p.expired ? "中獎" : "🎉 中獎"} ${wins.length} 張，合計 ${fmt(total)}${p.expired ? "（已逾領獎期限，無法兌領）" : ""}` : `🎟 對獎結果：這 ${p.rows.length} 張都沒中`}</h3>
+    ${wins.map(r => `<div>${esc(r.no)}　${r.prize.name} ${fmt(r.prize.amt)}　<span style="color:var(--muted)">${esc(r.store)}</span></div>`).join("")}
+    <div class="m">特別獎 ${list(z.special)}　特獎 ${list(z.grand)}　頭獎 ${list(z.firsts)}　（二～六獎：對頭獎末 7～3 碼）</div>
+    <div class="m">財政部公開資料不含「增開六獎」，若該期有增開，請用發票末三碼自行再對一次。通知信若是公司統編發票則不能兌獎。</div>
+  </div>`;
+}
+
+function render(){
+  const app = document.getElementById("app");
+  const all = buildPeriods();
+  const periods = all.filter(p => showOld || !p.expired);
+  const hidden = all.length - periods.length;
+  if (!periods.find(p => p.id === current)) current = ([...periods].reverse().find(p => p.rows.some(r => r.unread)) || periods[periods.length - 1] || {}).id;
+  const unreadTotal = rows.filter(r => r.unread).length;
+  document.getElementById("badge").hidden = !unreadTotal;
+  document.getElementById("badge").textContent = unreadTotal + " 封未讀";
+  document.title = (unreadTotal ? `(${unreadTotal}) ` : "") + "發票收件匣";
+
+  const tabs = periods.map(p => {
+    const u = p.rows.filter(r => r.unread).length;
+    return `<button class="tab" role="tab" aria-selected="${p.id === current}" data-id="${p.id}">${p.name}（${p.rows.length}）${u ? `<span class="n">${u}</span>` : ""}</button>`;
+  }).join("");
+  const p = periods.find(x => x.id === current);
+  let view = "";
+  if (!p) view = `<p class="sub">這個標籤底下目前沒有可顯示的發票。</p>`;
+  else {
+    const needle = q.toLowerCase();
+    const list = p.rows.filter(r => (!onlyUnread || r.unread) &&
+      (!needle || [r.no, r.store, r.item, r.note, r.d, r.amt].join(" ").toLowerCase().includes(needle)));
+    const known = p.rows.filter(r => r.amt != null), sum = known.reduce((a, r) => a + r.amt, 0);
+    const unknown = p.rows.length - known.length, u = p.rows.filter(r => r.unread).length;
+    view = `
+    <div class="period">
+      <h2>${p.name}　<span class="pill ${p.wait ? "wait" : ""}">${p.status}</span></h2>
+      <div class="meta"><span>消費期間 <b>${p.range}</b></span><span>開獎 <b>${p.draw}</b></span><span>領獎期間 <b>${p.claim}</b></span></div>
+    </div>
+    ${prizeBox(p)}
+    <div class="tools">
+      <input type="search" id="q" placeholder="搜尋發票號碼、店家、商品…" value="${esc(q)}">
+      <label class="chk"><input type="checkbox" id="onlyUnread" ${onlyUnread ? "checked" : ""}>只看未讀</label>
+      <button id="readAll" ${u ? "" : "disabled"}>本期全部標為已讀（${u}）</button>
+      <button id="csv">下載 CSV</button>
+    </div>
+    <div class="tablebox"><table>
+      <thead><tr><th>月份</th><th>發票號</th><th class="num">消費金額</th><th>消費商品</th><th>開立店家</th><th></th></tr></thead>
+      <tbody>${list.map(rowHtml).join("") || `<tr><td colspan="6" style="color:var(--muted);cursor:default">沒有符合的發票</td></tr>`}</tbody>
+      <tfoot><tr><td colspan="2">本期合計（${p.rows.length} 張）</td><td class="num">${fmt(sum)}</td>
+        <td colspan="3" style="font-weight:400;color:var(--muted)">${unknown ? `另有 ${unknown} 張通知信未載明金額，未計入合計` : "金額皆已載明"}</td></tr></tfoot>
+    </table></div>`;
+  }
+  app.innerHTML = `<div class="tabs" role="tablist">${tabs}</div>${view}
+    ${hidden || showOld ? `<div class="more"><button id="toggleOld">${showOld ? "隱藏" : "顯示"}已逾領獎期限的期別${showOld ? "" : `（${hidden}）`}</button></div>` : ""}
+    <p class="legend">
+      <span class="na">通知信未載明</span> 該封通知信沒寫金額或品項，需到財政部電子發票整合服務平台、店家會員頁或載具查詢。<br>
+      <span class="inf">比對</span> 品項由同時間的消費明細信比對而來　<span class="inf">你補充</span> 由你告知（旺拓＝訂閱服務、MyCard＝遊戲點數）　<span class="inf">依寄件者推測</span> 依寄件公司推測（CHARGESPOT＝行動電源租借）。<br>
+      兌獎期限依財政部規則推算：開獎日為單數月 25 日，領獎期間自開獎次月 6 日起算 3 個月。實際請以財政部公告為準。
+    </p>`;
+  bind();
+}
+
+function bind(){
+  document.querySelectorAll(".tab").forEach(b => b.onclick = () => { current = b.dataset.id; render(); });
+  document.querySelectorAll("tbody tr[data-id]").forEach(tr => tr.onclick = e => {
+    if (e.target.closest("a")) { markRead([tr.dataset.id]); return; }
+    markRead([tr.dataset.id]);
+  });
+  const qi = document.getElementById("q");
+  if (qi) qi.oninput = () => { q = qi.value; const pos = qi.selectionStart; render(); const n = document.getElementById("q"); n.focus(); n.setSelectionRange(pos, pos); };
+  const ou = document.getElementById("onlyUnread"); if (ou) ou.onchange = () => { onlyUnread = ou.checked; render(); };
+  const ra = document.getElementById("readAll");
+  if (ra) ra.onclick = () => {
+    const per = buildPeriods().find(x => x.id === current);
+    markRead(per.rows.filter(r => r.unread).map(r => r.id));
+  };
+  const c = document.getElementById("csv"); if (c) c.onclick = downloadCsv;
+  const t = document.getElementById("toggleOld"); if (t) t.onclick = () => { showOld = !showOld; render(); };
+}
+
+// ---------- 已讀 ----------
+async function markRead(ids){
+  ids = ids.filter(id => (rows.find(r => r.id === id) || {}).unread);
+  if (!ids.length) return;
+  const backup = rows;
+  const s = new Set(ids);
+  rows = rows.map(r => s.has(r.id) ? { ...r, unread: false } : r);   // 樂觀更新
+  s.forEach(id => freshIds.delete(id));
+  render();
+  try {
+    const r = await fetch("/api/read", { method: "POST", headers: { "Content-Type": "application/json", "X-Invoice-App": "1" }, body: JSON.stringify({ ids }) });
+    if (!r.ok) throw new Error((await r.json()).error || r.status);
+  } catch (e) {
+    rows = backup; render(); showErr("標記已讀失敗：" + e.message);
+  }
+}
+
+// ---------- 通知 ----------
+function notify(newRows){
+  if (!newRows.length) return;
+  const t = newRows.length === 1 ? `新發票：${newRows[0].store}` : `${newRows.length} 張新發票`;
+  const body = newRows.slice(0, 4).map(r => `${r.no || ""} ${r.amt != null ? "NT$ " + r.amt : ""} ${r.store}`).join("\n");
+  document.getElementById("newText").textContent = `${t}（${newRows.length} 封未讀，已用橘色標示）`;
+  document.getElementById("newBanner").hidden = false;
+  if ("Notification" in window && Notification.permission === "granted") {
+    try { new Notification(t, { body, tag: "invoice-new" }); } catch {}
+  }
+}
+document.getElementById("dismissNew").onclick = () => { document.getElementById("newBanner").hidden = true; freshIds.clear(); render(); };
+document.getElementById("enableNoti").onclick = async () => {
+  try { await Notification.requestPermission(); } catch {}
+  document.getElementById("notiBanner").hidden = true;
+};
+function showErr(msg){ const e = document.getElementById("errBanner"); e.textContent = msg; e.hidden = !msg; }
+
+// ---------- 取得資料 ----------
+function setStat(text, cls){
+  document.getElementById("stat").textContent = text;
+  document.getElementById("dot").className = "dot " + (cls || "");
+}
+async function poll(force){
+  setStat("同步中…", "sync");
+  try {
+    const r = await fetch("/api/state" + (force ? "?force=1" : ""), { cache: "no-store" });
+    const j = await r.json();
+    if (j.setup) return renderSetup(j.setup);
+    if (j.label) document.getElementById("label").textContent = j.label;
+    if (j.error) { showErr(j.code === "NO_AUTH" ? "Gmail 授權已失效，請重新授權。" : "同步失敗：" + j.error); setStat("同步失敗，顯示上次資料", "err"); if (j.code === "NO_AUTH") return renderSetup("auth"); }
+    else showErr("");
+    if (!j.error || j.rows.length) {
+      const incoming = j.rows;
+      const newOnes = incoming.filter(r => r.unread && !seen.has(r.id));
+      if (firstLoad) { newOnes.forEach(r => freshIds.add(r.id)); if (newOnes.length) showNewBanner(newOnes); }
+      else if (newOnes.length) { newOnes.forEach(r => freshIds.add(r.id)); notify(newOnes); }
+      incoming.forEach(r => seen.add(r.id));
+      await loadPrizes(incoming);
+      store.set("seenIds", [...seen]);
+      rows = incoming;
+      firstLoad = false;
+      render();
+      if (!j.error) setStat(j.pending ? `首次載入中…還有 ${j.pending} 封` : "已同步 " + new Date(j.at).toLocaleTimeString("zh-TW", { hour12: false }), "");
+    }
+    if ("Notification" in window && Notification.permission === "default") document.getElementById("notiBanner").hidden = false;
+  } catch (e) {
+    setStat("連不上本機伺服器", "err"); showErr("連不上本機伺服器，請確認 ./start.sh 還在執行。");
+  }
+}
+async function loadPrizes(incoming){
+  try {
+    const j = await (await fetch("/api/prizes", { cache: "no-store" })).json();
+    prizeErr = j.error || null;
+    prizeMap = {}; (j.items || []).forEach(z => { prizeMap[z.key] = z; });
+    // 新中獎通知
+    const wonBefore = new Set(store.get("seenWins", [])); const wins = [];
+    for (const p of buildPeriods()) p.rows.forEach(r => { if (r.prize && !p.expired && !wonBefore.has(r.id)) wins.push({ r, p }); });
+    if (wins.length) {
+      store.set("seenWins", [...wonBefore, ...wins.map(w => w.r.id)]);
+      const total = wins.reduce((a, w) => a + w.r.prize.amt, 0);
+      const t = `🎉 發票中獎！${wins.length} 張，合計 ${fmt(total)}`;
+      document.getElementById("newText").textContent = t + "：" + wins.map(w => w.r.no).join("、");
+      document.getElementById("newBanner").hidden = false;
+      if ("Notification" in window && Notification.permission === "granted") { try { new Notification(t, { body: wins.map(w => `${w.r.no} ${w.r.prize.name}`).join("\n"), tag: "invoice-win" }); } catch {} }
+    }
+  } catch (e) { prizeErr = "連線失敗"; }
+}
+function showNewBanner(newOnes){
+  document.getElementById("newText").textContent = `自上次開啟後有 ${newOnes.length} 封新發票信`;
+  document.getElementById("newBanner").hidden = false;
+}
+
+function renderSetup(kind){
+  setStat(kind === "auth" ? "尚未授權 Gmail" : "尚未設定 Google 憑證", "err");
+  document.getElementById("app").innerHTML = kind === "auth"
+    ? `<div class="setup"><p>已找到 <code>credentials.json</code>，還差一步：授權這個頁面讀取並修改（標已讀）你的 Gmail。</p>
+       <p><a class="btn primary" href="/auth" style="text-decoration:none;display:inline-block">使用 Google 授權</a></p>
+       <p class="sub">若出現「Google 尚未驗證這個應用程式」，那是因為這是你自己建的憑證；選「進階 → 前往（不安全）」即可。授權只存在本機的 token.json。</p></div>`
+    : `<div class="setup"><p><b>第一次使用，需要一組你自己的 Google OAuth 憑證（約 5 分鐘，免費）：</b></p><ol>
+       <li>開 <code>console.cloud.google.com</code>，建立（或選一個）專案。</li>
+       <li>「API 和服務 → 程式庫」搜尋 <b>Gmail API</b> → 啟用。</li>
+       <li>「OAuth 同意畫面」：User Type 選「外部」，填應用程式名稱與你的 email；在「測試使用者」加入你自己的 Gmail。</li>
+       <li>「憑證 → 建立憑證 → OAuth 用戶端 ID」，應用程式類型選<b>電腦版應用程式</b>。</li>
+       <li>下載 JSON，改名為 <code>credentials.json</code>，放進這個資料夾（與 <code>server.js</code> 同層）。</li>
+       <li>回到這頁重新整理。</li></ol></div>`;
+}
+
+function downloadCsv(){
+  const p = buildPeriods().find(x => x.id === current); if (!p) return;
+  const head = ["期別","月份","開立日期","發票號","消費金額","消費商品","開立店家","備註","已讀","中獎"];
+  const lines = [head].concat(p.rows.map(r => [p.name, parseInt(r.d.slice(5,7),10)+"月", r.d, r.no || "",
+    r.amt == null ? "通知信未載明" : r.amt,
+    r.item == null ? "通知信未載明" : r.item + (SRC[r.itemSrc] ? `（${SRC[r.itemSrc]}）` : ""),
+    r.store, r.note || "", r.unread ? "未讀" : "已讀", r.prize ? r.prize.name + " " + r.prize.amt : ""]));
+  const csv = "﻿" + lines.map(l => l.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = "發票_" + p.name + ".csv";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+poll();
+timer = setInterval(() => { poll(); }, POLL_MS);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+</script>
+</body>
+</html>
